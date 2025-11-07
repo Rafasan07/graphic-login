@@ -21,7 +21,7 @@ export default function ImageSelectionPanel({ images }: ImageSelectionPanelProps
                 Select an Image
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {images.map((src, index) => (
+                {images && images.length > 0 && images.map((src, index) => (
                     <div
                         key={index}
                         onClick={() => setSelected(src)}
