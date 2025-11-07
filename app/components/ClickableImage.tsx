@@ -15,12 +15,14 @@ export default function ClickableImage({ src, width, height, className, onClick 
     return (
         <div>
             <Image
+                priority
                 src={src}
                 width={width}
                 height={height}
                 className={className}
                 alt="Clickable"
                 onClick={onClick}
+
             />
         </div>
     );
