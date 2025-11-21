@@ -1,32 +1,66 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import PicturePasswordModal from "./RegisterModal";
 
 export interface ImageSelectionPanelProps {
-    images: string[];
-
+    selectedImage: string;
+    setShowModal: (show: boolean) => void;
+    setSelectedImage: (imageUrl: string) => void;
+    clearSelection: () => void;
 }
 
-export default function ImageSelectionPanel({ images }: ImageSelectionPanelProps) {
-    const [selected, setSelected] = useState("");
+export default function ImageSelectionPanel({
+    selectedImage,
+    setShowModal,
+    setSelectedImage,
+    clearSelection,
+}: ImageSelectionPanelProps) {
+    const [stockImages, setStockImages] = useState<string[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const handleSelection = (imgSource: string) => {
-        setSelected(imgSource);
-        console.log("Selected image:", imgSource);
+
+    const handleImageSelection = (imgSource: string) => {
+        clearSelection();
+        setSelectedImage(imgSource);
+        setShowModal(true);
     };
+
+    useEffect(() => {
+        const fetchStockImages = async () => {
+            try {
+                const response = await fetch('/api/getStockImages', {
+                    method: 'GET'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log("Stock images", data);
+                    setStockImages(data.images);
+                } else {
+                    console.error('Failed to fetch stock images');
+                }
+            } catch (error) {
+                console.error('Error fetching stock images:', error);
+            }
+        }
+        setIsLoading(true);
+        fetchStockImages().then(() => setIsLoading(false));
+    }, []);
     return (
         <div className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-center text-white">
                 Select an Image
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {images && images.length > 0 && images.map((src, index) => (
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {isLoading && stockImages.length === 0 && <p>Loading images...</p>}
+                {!isLoading && stockImages.length === 0 && <p>No images available</p>}
+                {stockImages && stockImages.length > 0 && stockImages.map((src, index) => (
                     <div
                         key={index}
-                        onClick={() => setSelected(src)}
+                        onClick={() => setSelectedImage(src)}
                         className={`relative cursor-pointer rounded-xl overflow-hidden border-4 transition-all duration-200 
-              ${selected === src ? "border-blue-500 scale-105" : "border-transparent hover:scale-105"}`}
+              ${selectedImage === src ? "border-blue-500 scale-105" : "border-transparent hover:scale-105"}`}
                     >
                         <Image
                             src={src}
@@ -34,15 +68,9 @@ export default function ImageSelectionPanel({ images }: ImageSelectionPanelProps
                             width={300}
                             height={200}
                             className="object-cover w-full h-40"
-                            onClick={() => handleSelection(src)}
+                            onClick={() => handleImageSelection(src)}
                         />
 
-                        {/* Overlay if selected */}
-                        {selected === src && (
-                            <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center text-white font-semibold">
-                                Selected
-                            </div>
-                        )}
                     </div>
                 ))}
             </div>

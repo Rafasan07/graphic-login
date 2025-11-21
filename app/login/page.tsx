@@ -2,6 +2,9 @@
 import { redirect, useRouter } from "next/navigation";
 import { useState } from "react";
 import ClickableImage from "../components/ClickableImage";
+import { ClickPoint } from "../register/page";
+import { sanitizeEmail, sanitizeUsername } from "../utils/validation";
+import LoginModal from "../components/LoginModal";
 
 interface LoginEvent extends React.FormEvent<HTMLFormElement> { }
 interface Coord {
@@ -17,30 +20,29 @@ interface Account {
 export default function Login() {
 
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [listening, setListening] = useState(false);
-    const [coords, setCoords] = useState<Coord[]>([]);
-    const router = useRouter();
+    const [username, setUsername] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [uploadedImage, setUploadedImage] = useState<string>('');
+    const [showModal, setShowModal] = useState<boolean>(false);
 
-    const handleLogin = async (e: LoginEvent): Promise<void> => {
-        e.preventDefault();
-        // TODO: send login request to /api/login
-        router.push('/welcome');
-    };
-    const handleClick = (e: React.MouseEvent<HTMLImageElement>) => {
-        const rect = (e.target as HTMLImageElement).getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        setCoords([...coords, { x, y }]);
-        console.log(`Clicked at: (${x}, ${y})`, coords);
-    };
+
     const loadPicturePassword = () => {
-        setListening(true);
+        // write logic to find user by username & email and return his picture url
+        try {
+            // const user = await fetch("/api/getUser", {
+            //     method: "Get",
+            //     headers: { "Content-Type": "application/json" },
+
+            // });
+            // console.log("USER = ", user)
+            setUploadedImage('file.svg');
+            setShowModal(true);
+        } catch (err) {
+            setError("Could not find the user!");
+        }
+
     }
-    const resetPicturePassword = () => {
-        setListening(false);
-        setCoords([]);
-    }
+
 
     return (
         <div className="flex items-center min-h-screen p-4 bg-gray-100 lg:justify-center">
@@ -52,6 +54,15 @@ export default function Login() {
                     <h3 className="my-4 text-2xl font-semibold text-gray-700">Account Login</h3>
                     <form action="#" className="flex flex-col space-y-5">
                         <div className="flex flex-col space-y-2">
+                            <label htmlFor="username" className="text-sm font-semibold">Username</label>
+                            <input
+                                type="text"
+                                id="username"
+                                className="px-4 py-2 transition duration-300 border border-gray-300 rounded focus:border-transparent focus:outline-none focus:ring-4 focus:ring-blue-200"
+                                autoFocus
+                                required
+                                value={username}
+                                onChange={handle => setUsername(handle.target.value)} />
                             <label htmlFor="email" className="text-sm font-semibold">Email address</label>
                             <input
                                 type="email"
@@ -62,18 +73,29 @@ export default function Login() {
                                 onChange={handle => setEmail(handle.target.value)}
                                 className="px-4 py-2 transition duration-300 border border-gray-300 rounded focus:border-transparent focus:outline-none focus:ring-4 focus:ring-blue-200"
                             />
-                            <div className="flex justify-between">
-                                <button className="text-sm text-blue-600 hover:underline self-baseline py-2 cursor-pointer" onClick={loadPicturePassword}>Load Picture Password</button>
-                                <button className="text-sm text-red-600 hover:underline self-baseline py-2 cursor-pointer" onClick={resetPicturePassword}>Reset Password</button>
-                            </div>
+                            {error && <div className="text-sm text-red-600">{error}</div>}
+
                         </div>
                         <div>
                             <button
-                                type="submit"
-                                onSubmit={e => handleLogin}
-                                className="w-full px-4 py-2 text-lg font-semibold text-white transition-colors duration-300 bg-blue-500 rounded-md shadow hover:bg-blue-600 focus:outline-none focus:ring-blue-200 focus:ring-4 cursor-pointer"
+                                className="w-full 
+                                                px-4 py-2 mt-2 text-lg font-semibold 
+                                                text-white transition-colors 
+                                                duration-300 bg-green-500 rounded-md shadow 
+                                                hover:bg-green-600 
+                                                focus:outline-none 
+                                                focus:ring-green-200
+                                                focus:ring-4 
+                                                cursor-pointer 
+                                                disabled:cursor-not-allowed 
+                                                disabled:opacity-50 
+                                                disabled:file:bg-gray-300 
+                                                disabled:file:text-gray-600
+                                                disabled:hover:file:bg-gray-300"
+                                disabled={username === '' || email === ''}
+                                onClick={loadPicturePassword}
                             >
-                                Log in
+                                Load Picture
                             </button>
                         </div>
 
@@ -93,13 +115,14 @@ export default function Login() {
                         <span className="text-xl text-yellow-300 font-bold">🎧</span>
                         <small className="text-yellow-300 font-bold">*Make sure to wear a headset to follow audio cues</small>
                     </div>
-                    <ClickableImage
-                        src="file.svg"
-                        width={320}
-                        height={240}
-                        className="p-2 cursor-crosshair"
-                        onClick={handleClick}
-                    />
+                    {showModal &&
+                        <LoginModal
+                            imageUrl={uploadedImage}
+                            email={email}
+                            username={username}
+                            setError={setError}
+                            onClose={() => setShowModal(false)}
+                        />}
 
                 </div>
             </div>
