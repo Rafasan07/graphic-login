@@ -1,7 +1,6 @@
 import { sanitizeEmail, sanitizeUsername } from "@/app/utils/validation";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import prisma from "@/app/lib/prisma";
 import { processClicks } from "@/app/utils/clicks";
 import * as argon2 from "argon2";
 import { ClickPoint } from "@/app/register/page";
