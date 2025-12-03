@@ -1,0 +1,17 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma-client"
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  username           String
+  imageUrl           String  // chosen or uploaded picture
+  picturePassword    String // Argon2 hash of the grid sequence
+}

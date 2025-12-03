@@ -1,10 +1,10 @@
 "use client"
-import { redirect, useRouter } from "next/navigation";
 import { useState } from "react";
-import ClickableImage from "../components/ClickableImage";
-import { ClickPoint } from "../register/page";
-import { sanitizeEmail, sanitizeUsername } from "../utils/validation";
+
 import LoginModal from "../components/LoginModal";
+import Image from "next/image";
+import { sanitizeEmail } from "../utils/validation";
+
 
 interface LoginEvent extends React.FormEvent<HTMLFormElement> { }
 interface Coord {
@@ -25,18 +25,29 @@ export default function Login() {
     const [uploadedImage, setUploadedImage] = useState<string>('');
     const [showModal, setShowModal] = useState<boolean>(false);
 
-
-    const loadPicturePassword = () => {
+    const loadPicturePassword = async () => {
         // write logic to find user by username & email and return his picture url
+        const emailSan = sanitizeEmail(email);
+        if (!emailSan.ok) {
+            setError(emailSan.error);
+            return;
+        }
+        console.log("email is = ", emailSan.value)
         try {
-            // const user = await fetch("/api/getUser", {
-            //     method: "Get",
-            //     headers: { "Content-Type": "application/json" },
+            const response = await fetch("/api/getUser", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: emailSan.value })
 
-            // });
-            // console.log("USER = ", user)
-            setUploadedImage('file.svg');
-            setShowModal(true);
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setUploadedImage(data.imageUrl);
+                setShowModal(true);
+
+            } else {
+                console.error('Failed to fetch url');
+            }
         } catch (err) {
             setError("Could not find the user!");
         }
@@ -50,9 +61,9 @@ export default function Login() {
                 className="flex flex-col overflow-hidden bg-white rounded-md shadow-lg max md:flex-row md:flex-1 lg:max-w-screen-md"
             >
 
-                <div className="p-5 bg-white md:flex-1 text-gray-700">
+                <div className="p-5 bg-white md:flex-1 text-gray-700 w-1/3">
                     <h3 className="my-4 text-2xl font-semibold text-gray-700">Account Login</h3>
-                    <form action="#" className="flex flex-col space-y-5">
+                    <form className="flex flex-col space-y-5">
                         <div className="flex flex-col space-y-2">
                             <label htmlFor="username" className="text-sm font-semibold">Username</label>
                             <input
@@ -78,6 +89,7 @@ export default function Login() {
                         </div>
                         <div>
                             <button
+                                type="button"
                                 className="w-full 
                                                 px-4 py-2 mt-2 text-lg font-semibold 
                                                 text-white transition-colors 
@@ -109,12 +121,24 @@ export default function Login() {
                     className="p-4 py-6  bg-blue-500 md:w-80 md:flex-shrink-0 md:flex md:flex-col md:items-center md:justify-evenly"
                 >
                     <div className="text-l text-white font-bold tracking-wider text-center">
-                        <p>Load your picture once you're ready</p>
+                        <div className="my-3 text-l font-bold text-left">
+                            <p className="text-m text-yellow-200 font-bold">Make Sure to Wear Earphones <span className="text-xl">🎧</span></p>
+                            <p className="text-m text-yellow-200 font-bold">Follow Audio Cues to Login</p>
+                        </div>
+
                     </div>
-                    <div className="my-3 text-l font-bold text-left">
-                        <span className="text-xl text-yellow-300 font-bold">🎧</span>
-                        <small className="text-yellow-300 font-bold">*Make sure to wear a headset to follow audio cues</small>
+                    <div>
+                        <Image
+                            priority
+                            src="https://pllo3zb4llzjlifm.public.blob.vercel-storage.com/logo.png"
+                            width={300}
+                            height={200}
+                            className={"overflow-hidden"}
+                            alt="logo"
+
+                        />
                     </div>
+
                     {showModal &&
                         <LoginModal
                             imageUrl={uploadedImage}

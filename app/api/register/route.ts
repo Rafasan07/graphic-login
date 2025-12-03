@@ -1,5 +1,8 @@
-// app/api/register/route.ts
+import prisma from "@/app/lib/prisma";
+import { ClickPoint } from "@/app/register/page";
+import { processClicks } from "@/app/utils/clicks";
 import { sanitizeEmail, sanitizeUsername } from "@/app/utils/validation";
+import * as argon2 from "argon2";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -15,28 +18,31 @@ export async function POST(req: NextRequest) {
             username,
             imageUrl,
             picturePassword,
-            secretClick,
+            secretClicks,
         } = body;
-        console.log('Register API called with:', body);
         const emailSan = sanitizeEmail(email);
         if (!emailSan.ok) return NextResponse.json({ error: emailSan.error }, { status: 400 });
 
         const userSan = sanitizeUsername(username);
         if (!userSan.ok) return NextResponse.json({ error: userSan.error }, { status: 400 });
 
-        const existing = await prisma?.user.findUnique({ where: { email: emailSan.value } });
+        const existing = await prisma.user.findUnique({ where: { email: emailSan.value } });
         if (existing) return NextResponse.json({ error: "Email already registered" }, { status: 409 });
+        // Flatten arrays into a single array
+        const allClicks: ClickPoint[] = [...picturePassword, ...secretClicks];
+        const serializedPassword = processClicks(allClicks);
+        const hashedPassword = await argon2.hash(serializedPassword);
 
-        // const user = await prisma.user.create({
-        //     data: { email: emailSan.value, displayName: userSan.value },
-        // });
-        console.log('Registered user:', {
-            email: emailSan.value, username: userSan.value, imageUrl,
-            picturePassword,
-            secretClick,
+        const user = await prisma.user.create({
+            data: {
+                email: emailSan.value,
+                username: userSan.value,
+                imageUrl: imageUrl,
+                picturePassword: hashedPassword,
+            },
         });
 
-        return NextResponse.json({ ok: true, id: 1 });
+        return NextResponse.json({ ok: true, id: user.id });
     } catch (err) {
         console.error(err);
         return NextResponse.json({ error: "Server error" }, { status: 500 });

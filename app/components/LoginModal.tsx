@@ -1,11 +1,8 @@
 "use client";
-import { on } from "events";
-import { useState, useRef, useEffect, use } from "react";
-import Image from 'next/image'
-import router, { useRouter } from "next/router";
-import { upload } from "@vercel/blob/client";
-import ProgressBar from "./ProgressBar";
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { sanitizeEmail, sanitizeUsername } from "../utils/validation";
+import { Bounce, ToastContainer, toast } from 'react-toastify';
 
 interface ClickPoint {
     x: number;
@@ -19,6 +16,7 @@ interface LoginModalProps {
     setError: (error: string | null) => void;
     onClose: () => void;
     maxClicks?: number;
+    maxSecretClicks?: number;
 }
 
 export default function LoginModal({
@@ -28,15 +26,14 @@ export default function LoginModal({
     setError,
     onClose,
     maxClicks = 5,
+    maxSecretClicks = 3
 }: LoginModalProps) {
-    const [clicks, setClicks] = useState<{ x: number; y: number }[]>([]);
-    const [secret, setSecret] = useState<ClickPoint | null>(null);
+    const [clicks, setClicks] = useState<ClickPoint[]>([]);
+    const [secret, setSecret] = useState<ClickPoint[]>([]);
     const imageRef = useRef<HTMLImageElement | null>(null);
     const [phase, setPhase] = useState<"normal" | "secret" | "done">("normal");
 
-    // const router = useRouter();
-
-
+    const router = useRouter();
 
     const handleClick = (e: React.MouseEvent<HTMLImageElement>) => {
         if (phase === "done") return;
@@ -52,7 +49,7 @@ export default function LoginModal({
         // Phase 1: normal clicks
         if (phase === "normal") {
             if (clicks.length >= maxClicks) {
-                alert("You already selected 5 spots. Now choose your secret spot.");
+                toast.success("You already selected 5 spots. Now choose your secret spots.");
                 setPhase("secret");
                 return;
             }
@@ -62,20 +59,20 @@ export default function LoginModal({
 
             if (updated.length === maxClicks) {
                 setPhase("secret");
-                alert("Now choose your one secret click spot.");
+                toast.success(`Now choose ${maxSecretClicks} secret Clicks.`);
             }
             return;
         }
 
         // Phase 2: secret click
         if (phase === "secret") {
-            if (secret) {
-                alert("You already selected your secret spot.");
+            if (secret.length === maxSecretClicks) {
+                toast.success("Secret Clicks saved! Click 'Login' to finish.");
+                setPhase("done");
                 return;
             }
-            setSecret(newClick);
-            setPhase("done");
-            alert("Secret spot saved! Click 'Login' to finish.");
+            const updated = [...secret, newClick];
+            setSecret(updated);
         }
     }
 
@@ -92,32 +89,42 @@ export default function LoginModal({
             setError(userSan.error);
             return;
         }
-
+        const user = {
+            email: email,
+            username: username,
+            imageUrl: imageUrl,
+            picturePassword: clicks,
+            secretClicks: secret,
+        }
         // logic to collect and auth clicks here
         const res = await fetch("/api/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                email: email,
-                username: username,
-                imageUrl: imageUrl,
-                passwordClicks: clicks,
-                secretClick: secret,
-            }),
+            body: JSON.stringify(user),
         });
         if (!res.ok) {
+            let errorMsg = 'Could not log in at this time. Please try again later.';
+            if (res.status === 400) {
+                const payload = await res.json().catch(() => ({}));
+                errorMsg = payload?.error || "Invalid login data";
+                toast.error(errorMsg + " Please try again.");
+                handleClear();
+                return;
+            }
             const payload = await res.json().catch(() => ({ error: "Server error" }));
-            throw new Error(payload?.error || "Server error");
+            toast.error(payload.error || errorMsg);
+            handleClear();
+            return;
         }
         router.push('/welcome');
     };
     const handleDone = async () => {
         if (clicks.length < maxClicks) {
-            alert(`Please select all ${maxClicks} normal spots first.`);
+            toast.error(`Please select all ${maxClicks} normal spots first.`);
             return;
         }
         if (!secret) {
-            alert("Please select your secret spot.");
+            toast.error("Please select your secret spot.");
             return;
         }
 
@@ -128,12 +135,25 @@ export default function LoginModal({
 
     const handleClear = () => {
         setClicks([]);
-        setSecret(null);
+        setSecret([]);
         setPhase("normal");
     };
 
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <ToastContainer
+                position="top-center"
+                autoClose={5000}
+                hideProgressBar={true}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="colored"
+                transition={Bounce}
+            />
             <div className="bg-white rounded-2xl p-6 shadow-lg w-[90%] max-w-md">
                 <button
                     onClick={onClose}
@@ -181,23 +201,25 @@ export default function LoginModal({
 
                         />
                     ))}
-                    {secret && (
+                    {secret.map((s, i) => (
                         <div
+                            key={i}
                             className="absolute bg-red-500 rounded-full w-5 h-5 border-2 border-white animate-pulse"
                             style={{
-                                left: `${secret.x * 100}%`,
-                                top: `${secret.y * 100}%`,
+                                left: `${s.x * 100}%`,
+                                top: `${s.y * 100}%`,
                                 transform: "translate(-50%, -50%)",
                             }}
+
                         />
-                    )}
+                    ))}
 
                 </div>
 
                 <div className="flex justify-between mt-4">
                     <button
                         onClick={handleClear}
-                        className="px-3 py-2 text-gray-600 hover:text-gray-800"
+                        className="px-3 py-2 text-gray-600 hover:text-gray-800 cursor-pointer"
                     >
                         Clear
                     </button>
@@ -206,7 +228,7 @@ export default function LoginModal({
                         onClick={handleDone}
                         className={`px-4 py-2 rounded-lg text-white 
                             ${phase === "done"
-                                ? "bg-blue-600 hover:bg-blue-700"
+                                ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
                                 : "bg-gray-400 cursor-not-allowed"
                             }`}
                     >

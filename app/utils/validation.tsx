@@ -32,7 +32,6 @@ export function sanitizeEmail(raw: unknown): Sanitized {
  * - enforce min/max length
  */
 export function sanitizeUsername(raw: unknown, opts?: { min?: number; max?: number }): Sanitized {
-    console.log('Sanitizing username:', raw, typeof raw, opts);
     if (typeof raw !== "string") return { ok: false, error: "Username must be a string." };
     const min = opts?.min ?? 2;
     const max = opts?.max ?? 30;

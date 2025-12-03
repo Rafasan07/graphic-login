@@ -1,10 +1,10 @@
 "use client";
-import { on } from "events";
 import { useState, useRef, useEffect, use } from "react";
-import Image from 'next/image'
-import { useRouter } from "next/router";
+
 import { upload } from "@vercel/blob/client";
 import ProgressBar from "./ProgressBar";
+import { ToastContainer, Bounce, toast } from "react-toastify";
+import { useRouter } from "next/navigation";
 
 interface ClickPoint {
     x: number;
@@ -23,6 +23,7 @@ interface RegisterModalProps {
     setError: (error: string) => void;
     onClose: () => void;
     maxClicks?: number;
+    maxSecretClicks?: number;
 }
 
 export default function RegisterModal({
@@ -37,15 +38,16 @@ export default function RegisterModal({
     setError,
     onClose,
     maxClicks = 5,
+    maxSecretClicks = 3
 }: RegisterModalProps) {
-    const [clicks, setClicks] = useState<{ x: number; y: number }[]>([]);
-    const [secret, setSecret] = useState<ClickPoint | null>(null);
+    const [clicks, setClicks] = useState<ClickPoint[]>([]);
+    const [secret, setSecret] = useState<ClickPoint[]>([]);
     const imageRef = useRef<HTMLImageElement | null>(null);
     const [phase, setPhase] = useState<"normal" | "secret" | "done">("normal");
     const [fileURL, setFileURL] = useState<string>('');
     const [isUploading, setIsUploading] = useState<boolean>(false);
     const [progress, setProgress] = useState<number>(0);
-    // const router = useRouter();
+    const router = useRouter();
 
     const uploadPersonalImage = async (): Promise<string | null> => {
         if (!file) return null;
@@ -63,7 +65,6 @@ export default function RegisterModal({
             return blob.url;
         }
         catch (err) {
-            console.error('Error uploading image:', err);
             setIsUploading(false);
             return null;
         }
@@ -76,13 +77,11 @@ export default function RegisterModal({
                 setFileURL(imageUrl);
             } else {
                 const fileUrl = await uploadPersonalImage();
-                console.log('Uploaded personal image URL:', fileUrl);
                 if (fileUrl) {
                     setFileURL(fileUrl);
 
                 }
             }
-            console.log('PicturePasswordModal initialized with fileURL:', fileURL);
         };
         init();
 
@@ -102,7 +101,7 @@ export default function RegisterModal({
         // Phase 1: normal clicks
         if (phase === "normal") {
             if (clicks.length >= maxClicks) {
-                alert("You already selected 5 spots. Now choose your secret spot.");
+                toast.success("You already selected 5 spots. Now choose your secret spots.");
                 setPhase("secret");
                 return;
             }
@@ -112,36 +111,35 @@ export default function RegisterModal({
 
             if (updated.length === maxClicks) {
                 setPhase("secret");
-                alert("Now choose your one secret click spot.");
+                toast.success(`Now choose ${maxSecretClicks} secret Clicks.`);
             }
             return;
         }
 
         // Phase 2: secret click
         if (phase === "secret") {
-            if (secret) {
-                alert("You already selected your secret spot.");
+            if (secret.length >= maxSecretClicks) {
+                toast.success("Secret Clicks saved! Click 'Register' to finish.");
+                setPhase("done");
                 return;
             }
-            setSecret(newClick);
-            setPhase("done");
-            alert("Secret spot saved! Click 'Register' to finish.");
+            const updated = [...secret, newClick];
+            setSecret(updated);
         }
     }
     const registerUser = async (email: string, username: string, imageUrl: string) => {
         try {
-            // hash and send password clicks and secret along with email/username
-            console.log('Registering user with:', { email, username, imageUrl, clicks, secret });
+            const user = {
+                email: email,
+                username: username,
+                imageUrl: imageUrl,
+                picturePassword: clicks,
+                secretClicks: secret,
+            }
             const res = await fetch("/api/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    email: email,
-                    username: username,
-                    imageUrl: imageUrl,
-                    passwordClicks: clicks,
-                    secretClick: secret,
-                }),
+                body: JSON.stringify(user),
             });
             if (!res.ok) {
                 const payload = await res.json().catch(() => ({ error: "Server error" }));
@@ -150,9 +148,10 @@ export default function RegisterModal({
             setEmail('');
             setUsername('');
             setClicks([]);
+            setSecret([]);
             setSelectedImage('');
             setUploadedImage('');
-            // router.push('/welcome');
+            router.push('/welcome');
         } catch (err: any) {
             setError(err.message || "Unknown error");
         }
@@ -160,17 +159,17 @@ export default function RegisterModal({
 
     const handleDone = () => {
         if (clicks.length < maxClicks) {
-            alert(`Please select all ${maxClicks} normal spots first.`);
+            toast.error(`Please select all ${maxClicks} normal spots first.`);
             return;
         }
-        if (!secret) {
-            alert("Please select your secret spot.");
+        if (secret.length < maxSecretClicks) {
+            toast.error("Please select your secret spots.");
             return;
         }
 
         registerUser(email, username, fileURL).then(() => {
             setClicks([]);
-            setSecret(null);
+            setSecret([]);
             setPhase("normal");
             onClose();
         });
@@ -179,7 +178,7 @@ export default function RegisterModal({
 
     const handleClear = () => {
         setClicks([]);
-        setSecret(null);
+        setSecret([]);
         setPhase("normal");
     };
 
@@ -203,11 +202,10 @@ export default function RegisterModal({
                     </svg>
                 </button>
                 <p className="text-sm text-gray-500 mb-3 text-center">
-                    {phase === "normal"
-                        ? `Click up to ${maxClicks} spots on the image`
-                        : phase === "secret"
-                            ? "Choose one secret spot"
-                            : "You have completed your pattern"}
+                    {phase === "normal" && `Click ${maxClicks} spots on the image`}
+                    {phase === "secret" && "Choose the secret spots"}
+                    {phase === 'done' && "You have completed your pattern"}
+
                 </p>
 
                 <div className={`relative w-full aspect-square border rounded-lg overflow-hidden`}>
@@ -223,7 +221,7 @@ export default function RegisterModal({
                             width={400}
                             height={400}
                         />
-                    ) : <ProgressBar value={progress} />
+                    ) : <p className="text-lg text-red-500">Cannot upload the image.</p>
                     }
 
                     {clicks.map((c, i) => (
@@ -238,23 +236,24 @@ export default function RegisterModal({
 
                         />
                     ))}
-                    {secret && (
+                    {secret.map((s, i) => (
                         <div
+                            key={i}
                             className="absolute bg-red-500 rounded-full w-5 h-5 border-2 border-white animate-pulse"
                             style={{
-                                left: `${secret.x * 100}%`,
-                                top: `${secret.y * 100}%`,
+                                left: `${s.x * 100}%`,
+                                top: `${s.y * 100}%`,
                                 transform: "translate(-50%, -50%)",
                             }}
-                        />
-                    )}
 
+                        />
+                    ))}
                 </div>
 
                 <div className="flex justify-between mt-4">
                     <button
                         onClick={handleClear}
-                        className="px-3 py-2 text-gray-600 hover:text-gray-800"
+                        className="px-3 py-2 text-gray-600 hover:text-gray-800 cursor-pointer"
                     >
                         Clear
                     </button>
@@ -262,7 +261,7 @@ export default function RegisterModal({
                     <button
                         onClick={handleDone}
                         className={`px-4 py-2 rounded-lg text-white ${phase === "done"
-                            ? "bg-blue-600 hover:bg-blue-700"
+                            ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
                             : "bg-gray-400 cursor-not-allowed"
                             }`}
                     >
@@ -270,6 +269,19 @@ export default function RegisterModal({
                     </button>
                 </div>
             </div>
+            <ToastContainer
+                position="top-center"
+                autoClose={5000}
+                hideProgressBar={true}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="colored"
+                transition={Bounce}
+            />
         </div>
     );
 }

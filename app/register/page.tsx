@@ -1,6 +1,5 @@
 "use client"
-import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useState, useRef } from "react";
 import ImageSelectionPanel, { ImageSelectionPanelProps } from "../components/ImageSelectionPanel";
 import { sanitizeEmail, sanitizeUsername } from "../utils/validation";
 import RegisterModal from "../components/RegisterModal";
@@ -19,7 +18,7 @@ export default function Register() {
     const [username, setUsername] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [passwordClicks, setPasswordClicks] = useState<ClickPoint[]>([]);
-    const [secretClick, setSecretClick] = useState<ClickPoint | null>(null);
+    const [secretClicks, setSecretClicks] = useState<ClickPoint[]>([]);
     const [selectedImage, setSelectedImage] = useState<string>('');
     const [uploadedImage, setUploadedImage] = useState<string>('');
     const [showModal, setShowModal] = useState<boolean>(false);
@@ -46,14 +45,14 @@ export default function Register() {
     const clearSelectedImage = () => {
         setSelectedImage('');
         setPasswordClicks([]);
-        setSecretClick(null);
+        setSecretClicks([]);
     }
 
     return (
         <div className={`flex items-center min-h-screen p-4 bg-gray-100 lg:justify-center transition-all duration-200
               ${uploadedImage !== '' ? "border-blue-500 scale-105" : "border-transparent"}`}>
             <div
-                className="flex flex-col overflow-hidden bg-white rounded-md shadow-lg max md:flex-row md:flex-1 max-w-[fit-content]"
+                className="flex flex-col overflow-hidden bg-white rounded-md shadow-lg max md:flex-row md:flex-1 max-w-[80%]"
             >
 
                 <div className="p-5 bg-white md:flex-1 text-gray-700">
@@ -69,7 +68,7 @@ export default function Register() {
                                 required
                                 value={username}
                                 onChange={handle => setUsername(handle.target.value)} />
-                            <label htmlFor="email" className="text-sm font-semibold">Email address</label>
+                            <label htmlFor="email" className="text-sm font-semibold">Email Address</label>
                             <input
                                 type="email"
                                 id="email"
@@ -80,9 +79,9 @@ export default function Register() {
                                 className="px-4 py-2 transition duration-300 border border-gray-300 rounded focus:border-transparent focus:outline-none focus:ring-4 focus:ring-blue-200"
                             />
                             {error && <div className="text-sm text-red-600">{error}</div>}
-                            <p className="text-sm font-semibold">Upload Your Own Picture or Select an image</p>
-                            <div className="max-w-md mx-auto">
-                                {!secretClick && passwordClicks.length === 0 ?
+                            <p className="text-sm font-semibold mt-4">Upload Your Own Picture or Select an Image</p>
+                            <div className="max-w-md cursor-pointer">
+                                {secretClicks.length === 0 && passwordClicks.length === 0 ?
                                     <div className="relative group w-full">
                                         <input
                                             type="file"
@@ -107,7 +106,6 @@ export default function Register() {
                                                 Please fill in the fields
                                             </div>
                                         )}
-                                        {/* {isUploading && <ProgressBar value={progress} />} */}
                                     </div>
                                     :
                                     <div className="flex flex-col items-start">
@@ -122,9 +120,22 @@ export default function Register() {
                             <button
                                 type="button"
                                 onClick={savePattern}
-                                className="cursor-pointer w-full px-4 py-2 text-lg font-semibold text-white transition-colors duration-300 bg-blue-500 rounded-md shadow hover:bg-blue-600 focus:outline-none focus:ring-blue-200 focus:ring-4"
+                                disabled={username === '' || email === ''}
+                                className="cursor-pointer w-1/2 px-4 py-2
+                                    text-lg font-semibold text-white
+                                    transition-colors duration-300 bg-blue-500 
+                                    rounded-md shadow 
+                                    hover:bg-blue-600 
+                                    focus:outline-none 
+                                    focus:ring-blue-200 
+                                    focus:ring-4
+                                    disabled:cursor-not-allowed 
+                                    disabled:opacity-50 
+                                    disabled:file:bg-gray-300 
+                                    isabled:file:text-gray-600
+                                    disabled:hover:file:bg-gray-300"
                             >
-                                Save Pattern
+                                Upload
                             </button>
                         </div>
 
@@ -135,7 +146,7 @@ export default function Register() {
                     </form>
                 </div>
                 <div
-                    className="p-4 py-6 text-white bg-blue-500 md:flex-shrink-0 md:flex md:flex-col md:items-center md:justify-evenly w-4/5"
+                    className="p-4 py-6 text-white bg-blue-500 md:flex-shrink-0 md:flex md:flex-col md:items-center md:justify-evenly w-2/3"
                 >
                     <ImageSelectionPanel
                         setShowModal={setShowModal}
