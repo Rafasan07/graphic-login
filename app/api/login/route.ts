@@ -5,6 +5,7 @@ import { processClicks } from "@/app/utils/clicks";
 import * as argon2 from "argon2";
 import { ClickPoint } from "@/app/register/page";
 import prisma from "@/app/lib/prisma";
+import { console } from "inspector";
 
 
 
@@ -36,8 +37,26 @@ export async function POST(req: NextRequest) {
         if (!user) return NextResponse.json({ error: "User not found!" }, { status: 400 });
         const validPass = await argon2.verify(user.picturePassword, serializedPassword);
 
-        if (validPass) return NextResponse.json({ ok: true, user: { id: user.id, email: user.email, username: user.username } });
-        else return NextResponse.json({ error: "User not found!" }, { status: 400 });
+        if (!validPass) return NextResponse.json({ error: "User not found!" }, { status: 400 });
+
+        // create session token 
+        const sessionToken = crypto.randomUUID();
+        await prisma.session.create({
+            data: {
+                token: sessionToken,
+                userId: user.id,
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            },
+        });
+        const response = NextResponse.json({ ok: true, user: { id: user.id, email: user.email, username: user.username } });
+        response.cookies.set("sessionToken", sessionToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 7 * 24 * 60 * 60, // 7 days
+        });
+        return response;
     } catch (err) {
         // console.error(err);
         return NextResponse.json({ error: "Server error" }, { status: 500 });

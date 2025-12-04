@@ -41,8 +41,24 @@ export async function POST(req: NextRequest) {
                 picturePassword: hashedPassword,
             },
         });
-
-        return NextResponse.json({ ok: true, id: user.id });
+        // create session token 
+        const sessionToken = crypto.randomUUID();
+        await prisma.session.create({
+            data: {
+                token: sessionToken,
+                userId: user.id,
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            },
+        });
+        const response = NextResponse.json({ ok: true, user: { id: user.id, email: user.email, username: user.username } });
+        response.cookies.set("sessionToken", sessionToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 7 * 24 * 60 * 60, // 7 days
+        });
+        return response;
     } catch (err) {
         console.error(err);
         return NextResponse.json({ error: "Server error" }, { status: 500 });

@@ -24,6 +24,7 @@ export default function Login() {
     const [error, setError] = useState<string | null>(null);
     const [uploadedImage, setUploadedImage] = useState<string>('');
     const [showModal, setShowModal] = useState<boolean>(false);
+    const [hasAudio, setHasAudio] = useState<boolean>(false);
 
     const loadPicturePassword = async () => {
         // write logic to find user by username & email and return his picture url
@@ -32,7 +33,6 @@ export default function Login() {
             setError(emailSan.error);
             return;
         }
-        console.log("email is = ", emailSan.value)
         try {
             const response = await fetch("/api/getUser", {
                 method: "POST",
@@ -46,7 +46,8 @@ export default function Login() {
                 setShowModal(true);
 
             } else {
-                console.error('Failed to fetch url');
+                setError("User has not registered yet!");
+                return;
             }
         } catch (err) {
             setError("Could not find the user!");

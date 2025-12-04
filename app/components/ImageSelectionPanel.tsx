@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import PicturePasswordModal from "./RegisterModal";
 import ProgressBar from "./ProgressBar";
 
 export interface ImageSelectionPanelProps {
@@ -51,7 +50,7 @@ export default function ImageSelectionPanel({
     return (
         <div className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-center text-white">
-                {isLoading && stockImages.length === 0 ? "Loading Images" : "Select an Image"}
+                {isLoading && stockImages.length === 0 ? "Fetching Images..." : "Select an Image"}
             </h2>
             {isLoading && stockImages.length === 0 && <div className="w-full"><ProgressBar value={0} infinite /></div>}
 
