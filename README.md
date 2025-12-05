@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Prerequisites
 
-## Getting Started
+Node.js 18+ (recommended)
 
-First, run the development server:
+npm (or yarn/pnpm)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Clone the repo
+git clone <your-repo-url>
+cd <your-repo-folder>
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Replace <your-repo-url> and <your-repo-folder> with your values.
 
-## Learn More
+Environment
 
-To learn more about Next.js, take a look at the following resources:
+Create a .env file in the project root and paste the provided values
+Create a .env.local file in the project root and paste the provided values
+Install dependencies
+npm install
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+////////////////
+Vercel Setup Local
+1. Install Vercel CLI
+npm i -g vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+2. Login
+vercel login with the provided account
+3. Pull environment variables
+vercel pull
+4. Run locally using Vercel dev
+vercel dev
+Open localhost:3000
+///////////////
+Prisma setup (generate client & migrate)
+1) Generate Prisma client
 
-## Deploy on Vercel
+npx prisma generate
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2) Create/migrate the database
+3) Open Prisma Studio.Use Studio to inspect users, sessions, and stored hashes.
+npx prisma studio
+Open localhost:5555 
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
