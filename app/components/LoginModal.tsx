@@ -44,8 +44,7 @@ export default function LoginModal({
     const router = useRouter();
 
     useEffect(() => {
-        // hasAudio && playAudioCue(findUrlByKeyword("direction"));
-        playAudioCue(findUrlByKeyword("direction"));
+        hasAudio && playAudioCue(findUrlByKeyword("direction"));
         decideRef.current = decideNextClick();
     }, []);
 
@@ -269,7 +268,7 @@ export default function LoginModal({
                         ref={imageRef}
                         src={imageUrl}
                         alt="Image"
-                        className={`w-full h-full object-cover ${true ? phase === "done" ? "cursor-not-allowed" : "cursor-crosshair" : "cursor-not-allowed"}`}
+                        className={`w-full h-full object-cover ${hasAudio ? phase === "done" ? "cursor-not-allowed" : "cursor-crosshair" : "cursor-not-allowed"}`}
                         onClick={handleClick}
                         width={400}
                         height={400}
