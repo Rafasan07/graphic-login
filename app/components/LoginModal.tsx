@@ -44,6 +44,7 @@ export default function LoginModal({
     const router = useRouter();
 
     useEffect(() => {
+        // hasAudio && playAudioCue(findUrlByKeyword("direction"));
         playAudioCue(findUrlByKeyword("direction"));
         decideRef.current = decideNextClick();
     }, []);
@@ -172,7 +173,6 @@ export default function LoginModal({
             picturePassword: clicks,
             secretClicks: secret,
         }
-        console.log("LOGIN USER PAYLOAD", user);
         // logic to collect and auth clicks here
         const res = await fetch("/api/login", {
             method: "POST",
@@ -296,7 +296,7 @@ export default function LoginModal({
                                 transform: "translate(-50%, -50%)",
                             }}
 
-                        >{i + 1}</div>
+                        ></div>
                     ))}
 
                 </div>
