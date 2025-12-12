@@ -1,12 +1,12 @@
 "use client"
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import LoginModal from "../components/LoginModal";
 import Image from "next/image";
 import { sanitizeEmail } from "../utils/validation";
+import { ToastContainer, Bounce, toast } from "react-toastify";
 
 
-interface LoginEvent extends React.FormEvent<HTMLFormElement> { }
 interface Coord {
     x: number;
     y: number;
@@ -23,9 +23,46 @@ export default function Login() {
     const [username, setUsername] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [uploadedImage, setUploadedImage] = useState<string>('');
+    const [audioUrl, setAudioUrl] = useState<string[]>([]);
     const [showModal, setShowModal] = useState<boolean>(false);
     const [hasAudio, setHasAudio] = useState<boolean>(false);
 
+    useEffect(() => {
+        async function fetchAudioCues() {
+            try {
+                const response = await fetch('/api/getAudio', {
+                    method: 'GET'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setAudioUrl(data.audio);
+                } else {
+                    console.error('Failed to fetch stock images');
+                }
+            } catch (error) {
+                console.error('Error fetching stock images:', error);
+            }
+        }
+        async function init() {
+            // Permission required to read device labels
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            await updateOutputDevices();
+            navigator.mediaDevices.addEventListener("devicechange", updateOutputDevices);
+        }
+
+        async function updateOutputDevices() {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const outputs = devices.filter((d) => d.kind === "audiooutput");
+
+            const headphones = outputs.find((d) =>
+                d.label.toLowerCase().includes("headphone")
+            );
+            setHasAudio(headphones ? true : false);
+        }
+        fetchAudioCues();
+        init();
+    }, []);
     const loadPicturePassword = async () => {
         // write logic to find user by username & email and return his picture url
         const emailSan = sanitizeEmail(email);
@@ -34,6 +71,10 @@ export default function Login() {
             return;
         }
         try {
+            toast.info("Loading your picture...", {
+                position: "top-center",
+                autoClose: 1000,
+            });
             const response = await fetch("/api/getUser", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -52,12 +93,23 @@ export default function Login() {
         } catch (err) {
             setError("Could not find the user!");
         }
-
     }
-
 
     return (
         <div className="flex items-center min-h-screen p-4 bg-gray-100 lg:justify-center">
+            <ToastContainer
+                position="top-center"
+                autoClose={5000}
+                hideProgressBar={true}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="colored"
+                transition={Bounce}
+            />
             <div
                 className="flex flex-col overflow-hidden bg-white rounded-md shadow-lg max md:flex-row md:flex-1 lg:max-w-screen-md"
             >
@@ -143,10 +195,12 @@ export default function Login() {
                     {showModal &&
                         <LoginModal
                             imageUrl={uploadedImage}
+                            audioUrl={audioUrl}
                             email={email}
                             username={username}
                             setError={setError}
                             onClose={() => setShowModal(false)}
+                            hasAudio={hasAudio}
                         />}
 
                 </div>

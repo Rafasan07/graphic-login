@@ -35,7 +35,6 @@ export default function ImageSelectionPanel({
                 });
                 if (response.ok) {
                     const data = await response.json();
-                    console.log("Stock images", data);
                     setStockImages(data.images);
                 } else {
                     console.error('Failed to fetch stock images');

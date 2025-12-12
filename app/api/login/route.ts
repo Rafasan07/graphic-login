@@ -5,7 +5,7 @@ import { processClicks } from "@/app/utils/clicks";
 import * as argon2 from "argon2";
 import { ClickPoint } from "@/app/register/page";
 import prisma from "@/app/lib/prisma";
-import { console } from "inspector";
+
 
 
 
@@ -30,7 +30,6 @@ export async function POST(req: NextRequest) {
 
         const allClicks: ClickPoint[] = [...picturePassword, ...secretClicks];
         const serializedPassword = processClicks(allClicks);
-
         const user = await prisma.user.findUnique({
             where: { email: emailSan.value },
         });

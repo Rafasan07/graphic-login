@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { sanitizeEmail, sanitizeUsername } from "../utils/validation";
 import { Bounce, ToastContainer, toast } from 'react-toastify';
@@ -8,76 +8,152 @@ interface ClickPoint {
     x: number;
     y: number;
 }
-
 interface LoginModalProps {
     imageUrl?: string;
     email: string;
     username: string;
+    hasAudio: boolean;
     setError: (error: string | null) => void;
     onClose: () => void;
     maxClicks?: number;
     maxSecretClicks?: number;
+    audioUrl: string[]
 }
 
 export default function LoginModal({
     imageUrl = '',
     email,
     username,
+    hasAudio,
     setError,
     onClose,
     maxClicks = 5,
-    maxSecretClicks = 3
+    maxSecretClicks = 5,
+    audioUrl
 }: LoginModalProps) {
     const [clicks, setClicks] = useState<ClickPoint[]>([]);
     const [secret, setSecret] = useState<ClickPoint[]>([]);
-    const imageRef = useRef<HTMLImageElement | null>(null);
-    const [phase, setPhase] = useState<"normal" | "secret" | "done">("normal");
+    const [phase, setPhase] = useState<"normal" | "done">("normal");
 
+    const decideRef = useRef<() => boolean>(undefined);
+    const isNextSecretRef = useRef<boolean>(false);
+    const normalCountRef = useRef(0);
+    const secretCountRef = useRef(0);
+    const imageRef = useRef<HTMLImageElement | null>(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
     const router = useRouter();
 
-    const handleClick = (e: React.MouseEvent<HTMLImageElement>) => {
-        if (phase === "done") return;
+    useEffect(() => {
+        playAudioCue(findUrlByKeyword("direction"));
+        decideRef.current = decideNextClick();
+    }, []);
+
+    const playAudioCue = (url: string) => {
+        if (!audioRef.current) return;
+        audioRef.current.src = url;
+        audioRef.current.load();
+        audioRef.current.play().catch((e) => {
+            // ignore play errors (autoplay/user gesture policies)
+            console.warn("Audio play failed:", e);
+        });
+    };
+    const findUrlByKeyword = (keyword: string) => {
+        const lowerKeyword = keyword.toLowerCase();
+        for (const url of audioUrl) {
+            if (url.toLowerCase().includes(lowerKeyword)) {
+                return url; // return first match
+            }
+        }
+        return ''; // no match found
+    }
+    const getNewClick = (e: React.MouseEvent<HTMLImageElement>): ClickPoint => {
         const rect = (imageRef.current as HTMLImageElement).getBoundingClientRect();
-        const x = Number(((e.clientX - rect.left) / rect.width).toFixed(3));
-        const y = Number(((e.clientY - rect.top) / rect.height).toFixed(3));
+        const x = Number(((e.clientX - rect.left) / rect.width).toFixed(5));
+        const y = Number(((e.clientY - rect.top) / rect.height).toFixed(5));
 
         const newClick: ClickPoint = {
-            x: parseFloat(x.toFixed(3)),
-            y: parseFloat(y.toFixed(3)),
+            x: parseFloat(x.toFixed(5)),
+            y: parseFloat(y.toFixed(5)),
         };
+        return newClick;
+    }
 
-        // Phase 1: normal clicks
-        if (phase === "normal") {
-            if (clicks.length >= maxClicks) {
-                toast.success("You already selected 5 spots. Now choose your secret spots.");
-                setPhase("secret");
-                return;
+    const decideNextClick = () => {
+        let remainingNormal = maxClicks - 1;
+        let remainingSecret = maxSecretClicks
+        let callIndex = 0;
+
+        return function decide() {
+            callIndex++;
+
+            // First click must be normal
+            if (callIndex === 1) {
+                remainingNormal--;
+                return false;
+            }
+            const totalRemaining = remainingNormal + remainingSecret;
+
+            // 2️⃣ If no normals left → must be secret
+            if (remainingNormal === 0) {
+                remainingSecret--;
+                return true;
             }
 
-            const updated = [...clicks, newClick];
-            setClicks(updated);
-
-            if (updated.length === maxClicks) {
-                setPhase("secret");
-                toast.success(`Now choose ${maxSecretClicks} secret Clicks.`);
+            // 3️⃣ If no secrets left → must be normal
+            if (remainingSecret === 0) {
+                remainingNormal--;
+                return false;
             }
-            return;
-        }
 
-        // Phase 2: secret click
-        if (phase === "secret") {
-            if (secret.length === maxSecretClicks) {
-                toast.success("Secret Clicks saved! Click 'Login' to finish.");
-                setPhase("done");
-                return;
+            // 4️⃣ Probability based on remaining counts
+            const pSecret = remainingSecret / totalRemaining;
+            const roll = Math.random();
+
+            if (roll < pSecret) {
+                remainingSecret--;
+                return true; // secret
+            } else {
+                remainingNormal--;
+                return false; // normal
             }
-            const updated = [...secret, newClick];
-            setSecret(updated);
         }
     }
 
+    const handleClick = (e: React.MouseEvent<HTMLImageElement>) => {
+        if (!decideRef.current) return;
+        if (clicks.length == maxClicks && secret.length == maxSecretClicks) {
+            return;
+        }
+        const clickData = getNewClick(e);
+
+        if (isNextSecretRef.current) {
+            const updated = [...secret, clickData];
+            setSecret(updated);
+            secretCountRef.current += 1;
+        } else {
+            const updated = [...clicks, clickData];
+            setClicks(updated);
+            normalCountRef.current += 1;
+        }
+
+        const isNextSecret = decideRef.current();
+
+        // 4️⃣ Play audio instruction BEFORE user clicks again
+        if (isNextSecret) {
+            playAudioCue(findUrlByKeyword(`secret${secretCountRef.current + 1}`));
+        }
+        isNextSecretRef.current = isNextSecret;
+        if (secretCountRef.current + normalCountRef.current >= 10) {
+            setPhase("done");
+            return;
+        }
+    };
+
     const handleLogin = async (): Promise<void> => {
-        // TODO: send login request to /api/login
+        toast.info("Finding your account...", {
+            autoClose: 2000,
+            closeOnClick: true,
+        });
         setError(null);
         const emailSan = sanitizeEmail(email);
         if (!emailSan.ok) {
@@ -96,23 +172,29 @@ export default function LoginModal({
             picturePassword: clicks,
             secretClicks: secret,
         }
+        console.log("LOGIN USER PAYLOAD", user);
         // logic to collect and auth clicks here
         const res = await fetch("/api/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(user),
         });
+
         if (!res.ok) {
             let errorMsg = 'Could not log in at this time. Please try again later.';
             if (res.status === 400) {
                 const payload = await res.json().catch(() => ({}));
                 errorMsg = payload?.error || "Invalid login data";
-                toast.error(errorMsg + " Please try again.");
+                toast.error(errorMsg + " Please try again.", {
+                    closeOnClick: true,
+                });
                 handleClear();
                 return;
             }
             const payload = await res.json().catch(() => ({ error: "Server error" }));
-            toast.error(payload.error || errorMsg);
+            toast.error(payload.error || errorMsg, {
+                closeOnClick: true,
+            });
             handleClear();
             return;
         }
@@ -120,30 +202,37 @@ export default function LoginModal({
     };
     const handleDone = async () => {
         if (clicks.length < maxClicks) {
-            toast.error(`Please select all ${maxClicks} normal spots first.`);
+            toast.error(`Please select all ${maxClicks} spots.`, {
+                closeOnClick: true,
+            });
             return;
         }
-        if (!secret) {
-            toast.error("Please select your secret spot.");
+        if (secret.length < maxSecretClicks) {
+            toast.error(`Please select all ${maxSecretClicks} spots.`, {
+                closeOnClick: true,
+            });
             return;
         }
-
         await handleLogin();
-
     }
 
 
     const handleClear = () => {
         setClicks([]);
         setSecret([]);
+        secretCountRef.current = 0;
+        normalCountRef.current = 0;
+        isNextSecretRef.current = false;
+        decideRef.current = decideNextClick();
         setPhase("normal");
     };
 
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <audio ref={audioRef} src="/audio/test.mp3" hidden />
             <ToastContainer
                 position="top-center"
-                autoClose={5000}
+                autoClose={2000}
                 hideProgressBar={true}
                 newestOnTop={false}
                 closeOnClick
@@ -172,11 +261,7 @@ export default function LoginModal({
                     </svg>
                 </button>
                 <p className="text-sm text-gray-500 mb-3 text-center">
-                    {phase === "normal"
-                        ? `Click up to ${maxClicks} spots on the image`
-                        : phase === "secret"
-                            ? "Choose one secret spot"
-                            : "You have completed your pattern"}
+                    {hasAudio ? "Please follow the Audio instructions." : "Please connect your audio device to proceed."}
                 </p>
 
                 <div className={`relative w-full aspect-square border rounded-lg overflow-hidden`}>
@@ -184,7 +269,7 @@ export default function LoginModal({
                         ref={imageRef}
                         src={imageUrl}
                         alt="Image"
-                        className={`w-full h-full object-cover ${phase === "done" ? "cursor-not-allowed" : "cursor-crosshair"}`}
+                        className={`w-full h-full object-cover ${true ? phase === "done" ? "cursor-not-allowed" : "cursor-crosshair" : "cursor-not-allowed"}`}
                         onClick={handleClick}
                         width={400}
                         height={400}
@@ -204,14 +289,14 @@ export default function LoginModal({
                     {secret.map((s, i) => (
                         <div
                             key={i}
-                            className="absolute bg-red-500 rounded-full w-5 h-5 border-2 border-white animate-pulse"
+                            className="absolute bg-red-500 rounded-full w-5 h-5 border-2 border-white animate-pulse flex items-center justify-center text-white text-xs font-bold"
                             style={{
                                 left: `${s.x * 100}%`,
                                 top: `${s.y * 100}%`,
                                 transform: "translate(-50%, -50%)",
                             }}
 
-                        />
+                        >{i + 1}</div>
                     ))}
 
                 </div>

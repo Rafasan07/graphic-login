@@ -38,7 +38,7 @@ export default function RegisterModal({
     setError,
     onClose,
     maxClicks = 5,
-    maxSecretClicks = 3
+    maxSecretClicks = 5
 }: RegisterModalProps) {
     const [clicks, setClicks] = useState<ClickPoint[]>([]);
     const [secret, setSecret] = useState<ClickPoint[]>([]);
@@ -90,18 +90,20 @@ export default function RegisterModal({
     const handleClick = (e: React.MouseEvent<HTMLImageElement>) => {
         if (phase === "done") return;
         const rect = (imageRef.current as HTMLImageElement).getBoundingClientRect();
-        const x = Number(((e.clientX - rect.left) / rect.width).toFixed(3));
-        const y = Number(((e.clientY - rect.top) / rect.height).toFixed(3));
+        const x = Number(((e.clientX - rect.left) / rect.width).toFixed(5));
+        const y = Number(((e.clientY - rect.top) / rect.height).toFixed(5));
 
         const newClick: ClickPoint = {
-            x: parseFloat(x.toFixed(3)),
-            y: parseFloat(y.toFixed(3)),
+            x: parseFloat(x.toFixed(5)),
+            y: parseFloat(y.toFixed(5)),
         };
 
         // Phase 1: normal clicks
         if (phase === "normal") {
             if (clicks.length >= maxClicks) {
-                toast.success("You already selected 5 spots. Now choose your secret spots.");
+                toast.success("You already selected 5 spots. Now choose your secret spots.", {
+                    closeOnClick: true,
+                });
                 setPhase("secret");
                 return;
             }
@@ -111,7 +113,9 @@ export default function RegisterModal({
 
             if (updated.length === maxClicks) {
                 setPhase("secret");
-                toast.success(`Now choose ${maxSecretClicks} secret Clicks.`);
+                toast.success(`Now choose ${maxSecretClicks} secret Clicks.`, {
+                    closeOnClick: true,
+                });
             }
             return;
         }
@@ -119,7 +123,9 @@ export default function RegisterModal({
         // Phase 2: secret click
         if (phase === "secret") {
             if (secret.length >= maxSecretClicks) {
-                toast.success("Secret Clicks saved! Click 'Register' to finish.");
+                toast.success("Secret Clicks saved! Click 'Register' to finish.", {
+                    closeOnClick: true,
+                });
                 setPhase("done");
                 return;
             }
@@ -128,6 +134,10 @@ export default function RegisterModal({
         }
     }
     const registerUser = async (email: string, username: string, imageUrl: string) => {
+        toast.info("Creating your account...", {
+            autoClose: 2000,
+            closeOnClick: true,
+        });
         try {
             const user = {
                 email: email,
@@ -159,11 +169,15 @@ export default function RegisterModal({
 
     const handleDone = () => {
         if (clicks.length < maxClicks) {
-            toast.error(`Please select all ${maxClicks} normal spots first.`);
+            toast.error(`Please select all ${maxClicks} normal spots first.`, {
+                closeOnClick: true,
+            });
             return;
         }
         if (secret.length < maxSecretClicks) {
-            toast.error("Please select your secret spots.");
+            toast.error("Please select your secret spots.", {
+                closeOnClick: true,
+            });
             return;
         }
 
@@ -239,14 +253,16 @@ export default function RegisterModal({
                     {secret.map((s, i) => (
                         <div
                             key={i}
-                            className="absolute bg-red-500 rounded-full w-5 h-5 border-2 border-white animate-pulse"
+                            className="absolute bg-red-500 rounded-full w-5 h-5 border-2 border-white animate-pulse flex items-center justify-center text-white text-xs font-bold"
                             style={{
                                 left: `${s.x * 100}%`,
                                 top: `${s.y * 100}%`,
                                 transform: "translate(-50%, -50%)",
                             }}
 
-                        />
+                        >
+                            {i + 1}
+                        </div>
                     ))}
                 </div>
 
@@ -271,7 +287,8 @@ export default function RegisterModal({
             </div>
             <ToastContainer
                 position="top-center"
-                autoClose={5000}
+
+                autoClose={2000}
                 hideProgressBar={true}
                 newestOnTop={false}
                 closeOnClick
