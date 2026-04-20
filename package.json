@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "postinstall": "npx prisma generate --schema=./app/prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
