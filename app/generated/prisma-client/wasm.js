@@ -146,6 +146,10 @@ const config = {
         "fromEnvVar": null,
         "value": "windows",
         "native": true
+      },
+      {
+        "fromEnvVar": null,
+        "value": "rhel-openssl-3.0.x"
       }
     ],
     "previewFeatures": [],
@@ -171,8 +175,8 @@ const config = {
       }
     }
   },
-  "inlineSchema": "datasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\ngenerator client {\n  provider      = \"prisma-client-js\"\n  output        = \"../generated/prisma-client\"\n  binaryTargets = [\"native\"]\n}\n\nmodel User {\n  id              String    @id @default(cuid())\n  email           String    @unique\n  username        String\n  imageUrl        String // chosen or uploaded picture\n  picturePassword String // Argon2 hash of the grid sequence\n  sessions        Session[]\n}\n\nmodel Session {\n  id        String   @id @default(cuid())\n  userId    String\n  user      User     @relation(fields: [userId], references: [id])\n  token     String   @unique\n  expiresAt DateTime\n  createdAt DateTime @default(now())\n}\n",
-  "inlineSchemaHash": "b7f420f4d9e9e7dd619a91be30a2e096e49a6474c7c6b2833a7021a8d1ddde7f",
+  "inlineSchema": "datasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\ngenerator client {\n  provider      = \"prisma-client-js\"\n  output        = \"../generated/prisma-client\"\n  binaryTargets = [\"native\", \"rhel-openssl-3.0.x\"]\n}\n\nmodel User {\n  id              String    @id @default(cuid())\n  email           String    @unique\n  username        String\n  imageUrl        String // chosen or uploaded picture\n  picturePassword String // Argon2 hash of the grid sequence\n  sessions        Session[]\n}\n\nmodel Session {\n  id        String   @id @default(cuid())\n  userId    String\n  user      User     @relation(fields: [userId], references: [id])\n  token     String   @unique\n  expiresAt DateTime\n  createdAt DateTime @default(now())\n}\n",
+  "inlineSchemaHash": "4b911ea02d32b3cb9cacac18200e15918f19b158f3490e72865804886beabe0b",
   "copyEngine": true
 }
 config.dirname = '/'
